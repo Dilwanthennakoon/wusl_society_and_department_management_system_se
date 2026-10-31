@@ -1,0 +1,10 @@
+
+> society-management-system@0.1.0 dev
+> next dev -p 3001
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://10.181.244.116:3001
+- Environments: .env
+✓ Ready in 514ms
+[?25h

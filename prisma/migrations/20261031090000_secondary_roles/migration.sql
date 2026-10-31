@@ -1,0 +1,2 @@
+ALTER TABLE "admin"
+ADD COLUMN "secondary_roles" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

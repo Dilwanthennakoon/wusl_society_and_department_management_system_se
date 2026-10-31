@@ -1,0 +1,455 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Society {
+  society_id         Int       @id @default(autoincrement())
+  society_name       String
+  society_short_name String?
+  category           String?
+  description        String?
+  founded_date       DateTime?
+  status             String    @default("Active")
+  created_at         DateTime  @default(now())
+
+  registrations Registration[]
+  memberships   Membership[]
+  events        Event[]
+  contacts      SocietyContact[]
+  social_media  SocietySocialMedia[]
+  applications  SocietyApplication[]
+  budgets       SocietyBudget[]
+
+  @@map("society")
+}
+
+model Registration {
+  registration_id   Int      @id @default(autoincrement())
+  society_id        Int
+  admin_id          Int?
+  applicant_id      Int?
+  student_name      String
+  student_index_no  String
+  student_email     String
+  student_phone     String?
+  faculty           String?
+  department        String?
+  academic_year     String?
+  reason            String?
+  registration_date DateTime @default(now())
+  status            String   @default("Pending")
+
+  society    Society     @relation(fields: [society_id], references: [society_id])
+  admin      Admin?      @relation("ReviewedRegistrations", fields: [admin_id], references: [admin_id])
+  applicant  Admin?      @relation("StudentApplications", fields: [applicant_id], references: [admin_id])
+  membership Membership?
+
+  @@map("registration")
+}
+
+model Membership {
+  membership_id     Int      @id @default(autoincrement())
+  registration_id   Int      @unique
+  society_id        Int
+  student_name      String
+  student_index_no  String
+  student_email     String
+  member_role       String   @default("Member")
+  joined_date       DateTime @default(now())
+  membership_status String   @default("Active")
+
+  registration Registration @relation(fields: [registration_id], references: [registration_id])
+  society      Society      @relation(fields: [society_id], references: [society_id])
+
+  event_members    EventMember[]
+  task_assignments TaskAssignment[]
+
+  @@map("membership")
+}
+
+model Admin {
+  admin_id       Int      @id @default(autoincrement())
+  admin_name     String
+  admin_email    String   @unique
+  admin_password String
+  admin_role     String?
+  secondary_roles String[] @default([])
+  status         String   @default("Active")
+  created_at     DateTime @default(now())
+
+  registrations   Registration[]         @relation("ReviewedRegistrations")
+  applications    Registration[]         @relation("StudentApplications")
+  events          Event[]
+  tasks           Task[]
+  reports         Reporting[]
+  phones          AdminPhone[]
+  reviews         EventReview[]
+  society_application_reviews SocietyApplicationReview[]
+  society_applications SocietyApplication[]
+  password_resets PasswordResetRequest[]
+  received_workflow_notifications WorkflowNotification[] @relation("WorkflowNotificationRecipient")
+  sent_workflow_notifications     WorkflowNotification[] @relation("WorkflowNotificationActor")
+  submitted_society_budgets       SocietyBudget[] @relation("SubmittedSocietyBudgets")
+  approved_society_budgets        SocietyBudget[] @relation("ApprovedSocietyBudgets")
+
+  @@map("admin")
+}
+
+model PasswordResetRequest {
+  reset_id     Int       @id @default(autoincrement())
+  admin_id     Int
+  status       String    @default("Pending")
+  requested_at DateTime  @default(now())
+  completed_at DateTime?
+
+  admin Admin @relation(fields: [admin_id], references: [admin_id])
+
+  @@map("password_reset_request")
+}
+
+model Event {
+  event_id          Int       @id @default(autoincrement())
+  society_id        Int?
+  department_id     Int?
+  admin_id          Int
+  event_name        String
+  event_description String?
+  event_type        String?
+  event_date        DateTime?
+  start_time        DateTime?
+  end_time          DateTime?
+  venue             String?
+  academic_year     String?
+  applicant_name    String?
+  applicant_phone   String?
+  applicant_position String?
+  applicant_address String?
+  permission_purpose String?
+  rehearsal_date    DateTime?
+  rehearsal_start_time DateTime?
+  rehearsal_end_time DateTime?
+  preparation_date  DateTime?
+  preparation_start_time DateTime?
+  preparation_end_time DateTime?
+  cleanup_start_time DateTime?
+  cleanup_end_time  DateTime?
+  continues_after_8pm Boolean?
+  hall_warden_permission_details String?
+  outside_participants Boolean?
+  outside_participants_details String?
+  facility_permission_date DateTime?
+  applicant_signature String?
+  applicant_student_reg_no String?
+  workflow_type     String    @default("Society")
+  event_status      String    @default("Planned")
+  change_request    String?
+  submitted_at      DateTime?
+  published_at      DateTime?
+  created_at        DateTime  @default(now())
+
+  society    Society?    @relation(fields: [society_id], references: [society_id])
+  department Department? @relation(fields: [department_id], references: [department_id])
+  admin      Admin       @relation(fields: [admin_id], references: [admin_id])
+
+  event_members EventMember[]
+  tasks         Task[]
+  images        EventImage[]
+  sponsors      EventSponsor[]
+  reviews       EventReview[]
+
+  @@map("event")
+}
+
+model EventReview {
+  review_id   Int      @id @default(autoincrement())
+  event_id    Int
+  admin_id    Int
+  action      String
+  from_status String?
+  to_status   String
+  remarks     String?
+  reviewed_at DateTime @default(now())
+
+  event Event @relation(fields: [event_id], references: [event_id])
+  admin Admin @relation(fields: [admin_id], references: [admin_id])
+
+  @@map("event_review")
+}
+
+model SocietyApplication {
+  application_id                 Int      @id @default(autoincrement())
+  society_id                     Int?
+  admin_id                       Int
+  application_type               String
+  academic_year                  String
+  society_name                   String
+  communication_address          String?
+  constitution_enforced_date     DateTime?
+  constitution_annex_note        String?
+  bank_account_no                String?
+  agm_date                       DateTime?
+  senior_treasurer_name          String?
+  senior_treasurer_designation   String?
+  senior_treasurer_department    String?
+  new_office_bearers             Json?
+  new_committee_members          Json?
+  previous_office_bearers        Json?
+  previous_committee_members     Json?
+  active_members_count           Int?
+  members_annex_note             String?
+  previous_year_activities       String?
+  other_activities               String?
+  difficulties_and_solutions     String?
+  proposed_activity_plan         Json?
+  president_signature            String?
+  secretary_signature            String?
+  certification_date             DateTime?
+  certification_secretary_signature String?
+  application_status             String   @default("Draft")
+  change_request                 String?
+  submitted_at                   DateTime?
+  approved_at                    DateTime?
+  created_at                     DateTime @default(now())
+
+  society Society? @relation(fields: [society_id], references: [society_id])
+  admin   Admin    @relation(fields: [admin_id], references: [admin_id])
+  reviews SocietyApplicationReview[]
+
+  @@map("society_application")
+}
+
+model SocietyApplicationReview {
+  review_id      Int      @id @default(autoincrement())
+  application_id Int
+  admin_id       Int
+  action         String
+  from_status    String?
+  to_status      String
+  remarks        String?
+  reviewed_at    DateTime @default(now())
+
+  application SocietyApplication @relation(fields: [application_id], references: [application_id])
+  admin       Admin              @relation(fields: [admin_id], references: [admin_id])
+
+  @@map("society_application_review")
+}
+
+model SocietyBudget {
+  budget_id            Int       @id @default(autoincrement())
+  society_id           Int
+  admin_id             Int
+  approved_by_admin_id Int?
+  title                String
+  academic_year        String?
+  notes                String?
+  file_name            String
+  mime_type            String
+  file_size            Int
+  file_data            Bytes
+  budget_status        String    @default("Pending Treasurer Approval")
+  submitted_at         DateTime  @default(now())
+  approved_at          DateTime?
+  created_at           DateTime  @default(now())
+
+  society     Society @relation(fields: [society_id], references: [society_id])
+  admin       Admin   @relation("SubmittedSocietyBudgets", fields: [admin_id], references: [admin_id])
+  approved_by Admin?  @relation("ApprovedSocietyBudgets", fields: [approved_by_admin_id], references: [admin_id])
+
+  @@index([society_id, budget_status, submitted_at])
+  @@index([admin_id, submitted_at])
+  @@map("society_budget")
+}
+
+model EventMember {
+  event_member_id   Int      @id @default(autoincrement())
+  event_id          Int
+  membership_id     Int
+  role_in_event     String?
+  attendance_status String   @default("Registered")
+  joined_date       DateTime @default(now())
+
+  event      Event      @relation(fields: [event_id], references: [event_id])
+  membership Membership @relation(fields: [membership_id], references: [membership_id])
+
+  @@map("event_member")
+}
+
+model Task {
+  task_id          Int       @id @default(autoincrement())
+  event_id         Int
+  admin_id         Int
+  task_title       String
+  task_description String?
+  start_date       DateTime?
+  due_date         DateTime?
+  priority         String    @default("Medium")
+  task_status      String    @default("Pending")
+  created_at       DateTime  @default(now())
+
+  event Event @relation(fields: [event_id], references: [event_id])
+  admin Admin @relation(fields: [admin_id], references: [admin_id])
+
+  task_assignments TaskAssignment[]
+  report_tasks     ReportTask[]
+
+  @@map("task")
+}
+
+model TaskAssignment {
+  task_assignment_id Int      @id @default(autoincrement())
+  task_id            Int
+  membership_id      Int
+  assigned_date      DateTime @default(now())
+  assignment_status  String   @default("Assigned")
+
+  task       Task       @relation(fields: [task_id], references: [task_id])
+  membership Membership @relation(fields: [membership_id], references: [membership_id])
+
+  @@map("task_assignment")
+}
+
+model Reporting {
+  report_id          Int      @id @default(autoincrement())
+  admin_id           Int
+  report_title       String
+  report_type        String?
+  report_description String?
+  generated_date     DateTime @default(now())
+  report_status      String   @default("Generated")
+
+  admin Admin @relation(fields: [admin_id], references: [admin_id])
+
+  report_tasks ReportTask[]
+  attachments  ReportAttachment[]
+
+  @@map("reporting")
+}
+
+model ReportTask {
+  report_task_id Int     @id @default(autoincrement())
+  report_id      Int
+  task_id        Int
+  remarks        String?
+
+  report Reporting @relation(fields: [report_id], references: [report_id])
+  task   Task      @relation(fields: [task_id], references: [task_id])
+
+  @@map("report_task")
+}
+
+model SocietyContact {
+  contact_id    Int     @id @default(autoincrement())
+  society_id    Int
+  contact_type  String?
+  contact_value String?
+
+  society Society @relation(fields: [society_id], references: [society_id])
+
+  @@map("society_contact")
+}
+
+model SocietySocialMedia {
+  social_id  Int     @id @default(autoincrement())
+  society_id Int
+  platform   String?
+  link       String?
+
+  society Society @relation(fields: [society_id], references: [society_id])
+
+  @@map("society_social_media")
+}
+
+model AdminPhone {
+  admin_phone_id Int     @id @default(autoincrement())
+  admin_id       Int
+  phone_number   String?
+
+  admin Admin @relation(fields: [admin_id], references: [admin_id])
+
+  @@map("admin_phone")
+}
+
+model EventImage {
+  image_id    Int      @id @default(autoincrement())
+  event_id    Int
+  image_path  String?
+  media_type  String   @default("Image")
+  file_name   String?
+  mime_type   String?
+  file_size   Int?
+  file_data   Bytes?
+  uploaded_at DateTime @default(now())
+
+  event Event @relation(fields: [event_id], references: [event_id])
+
+  @@map("event_image")
+}
+
+model EventSponsor {
+  sponsor_id   Int      @id @default(autoincrement())
+  event_id     Int
+  sponsor_name String?
+  sponsor_type String?
+  amount       Decimal? @db.Decimal(10, 2)
+  contact_no   String?
+
+  event Event @relation(fields: [event_id], references: [event_id])
+
+  @@map("event_sponsor")
+}
+
+model ReportAttachment {
+  attachment_id Int      @id @default(autoincrement())
+  report_id     Int
+  file_name     String?
+  file_path     String?
+  uploaded_at   DateTime @default(now())
+
+  report Reporting @relation(fields: [report_id], references: [report_id])
+
+  @@map("report_attachment")
+}
+
+model Department {
+  department_id   Int      @id @default(autoincrement())
+  department_name String   @unique
+  department_code String?
+  faculty         String?
+  description     String?
+  status          String   @default("Active")
+  created_at      DateTime @default(now())
+
+  events Event[]
+
+  @@map("department")
+}
+
+model WorkflowNotification {
+  workflow_notification_id Int       @id @default(autoincrement())
+  recipient_admin_id       Int
+  actor_admin_id           Int?
+  title                    String
+  message                  String
+  notification_type        String
+  workflow_type            String?
+  target_role              String?
+  action_url               String?
+  event_id                 Int?
+  society_application_id   Int?
+  registration_id          Int?
+  read_at                  DateTime?
+  created_at               DateTime  @default(now())
+
+  recipient Admin  @relation("WorkflowNotificationRecipient", fields: [recipient_admin_id], references: [admin_id])
+  actor     Admin? @relation("WorkflowNotificationActor", fields: [actor_admin_id], references: [admin_id])
+
+  @@index([recipient_admin_id, read_at, created_at])
+  @@index([recipient_admin_id, created_at])
+  @@map("workflow_notification")
+}
